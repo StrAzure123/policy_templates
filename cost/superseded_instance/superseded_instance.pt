@@ -413,15 +413,42 @@ policy "pol_aws_superseded_instance" do
     detail_template <<-EOS
 # Superseded Instances
 
-| Resource UID | Name | Current Instance Type | Region | New Instance Type | VPC Required | ENA Required | Monthly Estimated Cost |
-| ------------ | ---- | --------------------- | ------ | ----------------- | ------------ | ------------ | ---------------------- |
-{{ range data -}}
-| {{ if .warn }}**_{{ end -}}{{ .resource_id }}{{ if .warn }}_**{{ end -}} | {{ .name }} | {{.instance_type}} | {{.region}} | {{.new_instance_type}} | {{ if .vpc_incompatible_move }} **_TRUE_** {{else}} false {{end}} |  {{ if .ena_incompatible }} **_TRUE_** {{else}} false {{end}} | {{.run_rate}} |
-{{ end -}}
-
 ___
 ###### Policy Applied in Account: {{ rs_project_name }} (Account ID: {{ rs_project_id }}) within Org: {{ rs_org_name }} (Org ID: {{ rs_org_id }})
 EOS
+    export do
+      field "if__warn" do
+        label "Resource UID"
+        path jmes_path(item, "if .warn")
+        format "printf(%s**_ end -}} .resource_id }} if .warn }}_** end -}})"
+      end
+      field "name" do
+        label "Name"
+      end
+      field "instance_type" do
+        label "Current Instance Type"
+      end
+      field "region" do
+        label "Region"
+      end
+      field "new_instance_type" do
+        label "New Instance Type"
+      end
+      field "if__vpc_incompatible_move" do
+        label "VPC Required"
+        path jmes_path(item, "if .vpc_incompatible_move")
+        format "printf(%s **_TRUE_** else}} false end}})"
+      end
+      field "if__ena_incompatible" do
+        label "ENA Required"
+        path jmes_path(item, "if .ena_incompatible")
+        format "printf(%s **_TRUE_** else}} false end}})"
+      end
+      field "run_rate" do
+        label "Monthly Estimated Cost"
+      end
+    end
+
     check logic_or(lt(to_n(val(item,"run_rate")),$param_threshold), lt(to_n(val(item,"run_rate")),$param_minimum_savings_threshold))
     escalate $report_instances
   end
